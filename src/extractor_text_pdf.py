@@ -44,7 +44,9 @@ class PDFTextExtractor:
         logger.info(f"Opening PDF file: {pdf_local_path}")
         with open(pdf_local_path, "rb") as file:
             pdf_reader = PyPDF2.PdfReader(file)
-            logger.info(f"Successfully opened PDF. Number of pages: {len(pdf_reader.pages)}")
+            logger.info(
+                f"Successfully opened PDF. Number of pages: {len(pdf_reader.pages)}"
+            )
 
             extracted_text = ""
             for page_num in range(len(pdf_reader.pages)):
@@ -96,11 +98,11 @@ class PDFTextExtractor:
             return pd.DataFrame()
 
         header = operations_text_list[0].split()
-        data = [
-            line.split() for line in operations_text_list[1:] if line
-        ]
+        data = [line.split() for line in operations_text_list[1:] if line]
 
-        logger.info(f"Creating DataFrame with header: {header} and {len(data)} data rows.")
+        logger.info(
+            f"Creating DataFrame with header: {header} and {len(data)} data rows."
+        )
         dataframe = pd.DataFrame(data, columns=header)
 
         logger.debug("DataFrame created successfully.")
@@ -136,8 +138,8 @@ class PDFTextExtractor:
 
         bucket = os.getenv("AWS_BUCKET")
         if not bucket:
-             logger.error("AWS_BUCKET environment variable not set. Download skipped.")
-             return False
+            logger.error("AWS_BUCKET environment variable not set. Download skipped.")
+            return False
 
         local_dir = "download"
         local_file_path = os.path.join(local_dir, self.pdf_file_path)
@@ -145,27 +147,32 @@ class PDFTextExtractor:
         if not os.path.exists(local_dir):
             logger.info(f"Creating local download directory: {local_dir}")
             try:
-                 os.makedirs(local_dir, exist_ok=True)
+                os.makedirs(local_dir, exist_ok=True)
             except Exception as e:
-                 logger.error(f"Failed to create local directory {local_dir}: {e}")
-                 return False
+                logger.error(f"Failed to create local directory {local_dir}: {e}")
+                return False
 
-
-        logger.info(f"Calling S3 download method for '{self.pdf_file_path}' from bucket '{bucket}'")
+        logger.info(
+            f"Calling S3 download method for '{self.pdf_file_path}' from bucket '{bucket}'"
+        )
         try:
             result = self.aws.download_file_from_s3(
                 bucket, self.pdf_file_path, local_file_path
             )
 
             if result:
-                logger.info(f"S3 download call completed successfully for '{self.pdf_file_path}'.")
+                logger.info(
+                    f"S3 download call completed successfully for '{self.pdf_file_path}'."
+                )
             else:
                 logger.error(f"S3 download call failed for '{self.pdf_file_path}'.")
 
             return result
 
         except Exception as e:
-            logger.exception(f"An unexpected error occurred during S3 download call for '{self.pdf_file_path}'")
+            logger.exception(
+                f"An unexpected error occurred during S3 download call for '{self.pdf_file_path}'"
+            )
             return False
 
     def send_to_db(self, dataframe, table_name):
@@ -173,7 +180,9 @@ class PDFTextExtractor:
         Saves the DataFrame to the specified PostgreSQL table and removes the local PDF file.
         """
         if dataframe.empty:
-            logger.warning(f"DataFrame is empty. Skipping save to database table: {table_name}")
+            logger.warning(
+                f"DataFrame is empty. Skipping save to database table: {table_name}"
+            )
             return
 
         logger.info(f"Attempting to save data to database table: {table_name}")
@@ -183,7 +192,7 @@ class PDFTextExtractor:
             connection = db_manager.alchemy()
             dataframe.to_sql(table_name, connection, if_exists="append", index=False)
             logger.success(f"Successfully saved data to database table: {table_name}")
-            
+
             pdf_local_path = f"download/{self.pdf_file_path}"
             if os.path.exists(pdf_local_path):
                 os.remove(pdf_local_path)
@@ -197,4 +206,3 @@ class PDFTextExtractor:
             if connection:
                 connection.dispose()
                 logger.debug("Database connection closed.")
-

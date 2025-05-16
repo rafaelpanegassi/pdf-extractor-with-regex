@@ -119,7 +119,7 @@ class RDSPostgreSQLManager:
             try:
                 cursor = connection.cursor()
                 cursor.execute(query, values)
-                connection.commit() # Commit the transaction
+                connection.commit()  # Commit the transaction
                 cursor.close()
                 connection.close()
                 logger.info("Insertion successful.")
@@ -128,12 +128,13 @@ class RDSPostgreSQLManager:
                 if connection:
                     connection.close()
             except Exception as e:
-                 logger.error(f"An unexpected error occurred during insert execution: {e}")
-                 if connection:
+                logger.error(
+                    f"An unexpected error occurred during insert execution: {e}"
+                )
+                if connection:
                     connection.close()
         else:
             logger.warning("Could not establish database connection to execute insert.")
-
 
     @staticmethod
     def check_environment_variables():
@@ -147,7 +148,9 @@ class RDSPostgreSQLManager:
         missing_vars = [var for var in required_vars if not os.getenv(var)]
 
         if missing_vars:
-            logger.warning(f"Missing database environment variables: {', '.join(missing_vars)}")
+            logger.warning(
+                f"Missing database environment variables: {', '.join(missing_vars)}"
+            )
             return False
         else:
             logger.info("Database environment variables are configured correctly.")
@@ -161,7 +164,8 @@ class RDSPostgreSQLManager:
             sqlalchemy.engine.base.Engine: The SQLAlchemy engine object.
         """
         db_url = f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
-        logger.info(f"Creating SQLAlchemy engine for database: {self.db_name} on host: {self.db_host}")
+        logger.info(
+            f"Creating SQLAlchemy engine for database: {self.db_name} on host: {self.db_host}"
+        )
         self.engine = create_engine(db_url)
         return self.engine
-

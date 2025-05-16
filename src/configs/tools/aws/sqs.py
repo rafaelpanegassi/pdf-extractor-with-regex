@@ -9,6 +9,7 @@ class AWSSQSManager:
     Manages interactions with AWS SQS queues, including getting queue URLs,
     receiving, checking, and deleting messages. Uses loguru for logging.
     """
+
     def __init__(
         self,
         access_key: str = None,
@@ -43,7 +44,9 @@ class AWSSQSManager:
         self.region_name = region_name or os.getenv("AWS_REGION")
 
         if not self.access_key or not self.secret_key:
-            logger.error("AWS credentials were not provided after environment variable check.")
+            logger.error(
+                "AWS credentials were not provided after environment variable check."
+            )
             raise ValueError("AWS credentials were not provided.")
 
         logger.info("AWS credentials loaded successfully.")
@@ -74,7 +77,9 @@ class AWSSQSManager:
         try:
             response = self.sqs.get_queue_url(QueueName=queue_name)
             queue_url = response["QueueUrl"]
-            logger.info(f"Successfully retrieved URL for queue {queue_name}: {queue_url}")
+            logger.info(
+                f"Successfully retrieved URL for queue {queue_name}: {queue_url}"
+            )
             return queue_url
         except Exception as e:
             logger.error(f"Error getting queue URL for {queue_name}: {e}")
@@ -102,7 +107,9 @@ class AWSSQSManager:
         try:
             queue_url = self.get_queue_url(queue_name)
             if not queue_url:
-                logger.warning(f"Could not get queue URL for {queue_name}. Cannot receive messages.")
+                logger.warning(
+                    f"Could not get queue URL for {queue_name}. Cannot receive messages."
+                )
                 return []
 
             response = self.sqs.receive_message(
@@ -132,8 +139,10 @@ class AWSSQSManager:
         try:
             queue_url = self.get_queue_url(queue_name)
             if not queue_url:
-                 logger.warning(f"Could not get queue URL for {queue_name}. Cannot check message count.")
-                 return False
+                logger.warning(
+                    f"Could not get queue URL for {queue_name}. Cannot check message count."
+                )
+                return False
 
             response = self.sqs.get_queue_attributes(
                 QueueUrl=queue_url,
@@ -145,13 +154,15 @@ class AWSSQSManager:
             logger.info(
                 f"Approximate number of messages in queue {queue_name}: {approximate_number_of_messages}"
             )
-            if approximate_number_of_messages != "N/A" and int(approximate_number_of_messages) > 0:
+            if (
+                approximate_number_of_messages != "N/A"
+                and int(approximate_number_of_messages) > 0
+            ):
                 return True
             return False
         except Exception as e:
             logger.error(f"Error checking messages in queue {queue_name}: {e}")
             return False
-
 
     def delete_message_from_queue(self, queue_name: str, receipt_handle: str):
         """
@@ -161,17 +172,21 @@ class AWSSQSManager:
             queue_name: The name of the SQS queue.
             receipt_handle: The receipt handle of the message to delete.
         """
-        logger.info(f"Attempting to delete message from queue: {queue_name} with receipt handle: {receipt_handle}")
+        logger.info(
+            f"Attempting to delete message from queue: {queue_name} with receipt handle: {receipt_handle}"
+        )
         try:
             queue_url = self.get_queue_url(queue_name)
             if not queue_url:
-                logger.warning(f"Could not get queue URL for {queue_name}. Cannot delete message.")
+                logger.warning(
+                    f"Could not get queue URL for {queue_name}. Cannot delete message."
+                )
                 return
 
-            self.sqs.delete_message(
-                QueueUrl=queue_url, ReceiptHandle=receipt_handle
+            self.sqs.delete_message(QueueUrl=queue_url, ReceiptHandle=receipt_handle)
+            logger.info(
+                f"Message deleted successfully from queue {queue_name} with receipt handle: {receipt_handle}."
             )
-            logger.info(f"Message deleted successfully from queue {queue_name} with receipt handle: {receipt_handle}.")
         except Exception as e:
             logger.error(f"Error deleting message from queue {queue_name}: {e}")
 
@@ -183,7 +198,9 @@ class AWSSQSManager:
         Returns:
             True if all required environment variables are set, False otherwise.
         """
-        logger.info("Checking for AWS environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION).")
+        logger.info(
+            "Checking for AWS environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION)."
+        )
         if (
             not os.getenv("AWS_ACCESS_KEY_ID")
             or not os.getenv("AWS_SECRET_ACCESS_KEY")

@@ -1,15 +1,16 @@
 import os
+
 import camelot
 import pandas as pd
-from unidecode import unidecode
 from loguru import logger
+from unidecode import unidecode
 
-from configs.rules.notas import rules_dict 
+from configs.rules.notas import rules_dict
 from configs.tools.aws.s3 import AWSS3
 from configs.tools.postgre import RDSPostgreSQLManager
 
-
 DOWNLOAD_DIR = "download"
+
 
 class PDFTableExtractor:
     """
@@ -66,8 +67,8 @@ class PDFTableExtractor:
                 self.configs.get("table_areas"),
                 self.configs.get("columns"),
                 self.configs.get("fix", True),
-                 flavor=self.configs.get("main_flavor", self.configs["flavor"]),
-                 pages=self.configs.get("main_pages", self.configs["pages"]),
+                flavor=self.configs.get("main_flavor", self.configs["flavor"]),
+                pages=self.configs.get("main_pages", self.configs["pages"]),
             )
 
             small_df = self.get_table_data(
@@ -80,7 +81,9 @@ class PDFTableExtractor:
             logger.info("Table extraction complete.")
 
             if main_df is None or main_df.empty:
-                 logger.warning("No main table data extracted. Skipping further processing for main.")
+                logger.warning(
+                    "No main table data extracted. Skipping further processing for main."
+                )
             else:
                 logger.info("Adding header info and insertion date to main data...")
                 main_df = self.add_header_info(header_df, main_df)
@@ -88,14 +91,17 @@ class PDFTableExtractor:
                 logger.info("Sanitizing main table column names...")
                 main_df = self.sanitize_column_names(main_df)
 
-                main_table_name = f"fatura_{self.configs.get('name', 'default_main')}".lower()
+                main_table_name = (
+                    f"fatura_{self.configs.get('name', 'default_main')}".lower()
+                )
                 logger.info(f"Sending main data to DB table: {main_table_name}")
                 self.send_to_db(main_df, main_table_name)
                 logger.info(f"Successfully sent main data to {main_table_name}")
 
-
             if small_df is None or small_df.empty:
-                 logger.warning("No small table data extracted. Skipping further processing for small.")
+                logger.warning(
+                    "No small table data extracted. Skipping further processing for small."
+                )
             else:
                 logger.info("Adding header info and insertion date to small data...")
                 small_df = self.add_header_info(header_df, small_df)
@@ -104,20 +110,25 @@ class PDFTableExtractor:
                     logger.info("Sanitizing small table column names...")
                     small_df = self.sanitize_column_names(small_df)
 
-                small_table_name = f"fatura_{self.configs.get('name', 'default_small')}_small".lower()
+                small_table_name = (
+                    f"fatura_{self.configs.get('name', 'default_small')}_small".lower()
+                )
                 logger.info(f"Sending small data to DB table: {small_table_name}")
                 self.send_to_db(small_df, small_table_name)
                 logger.info(f"Successfully sent small data to {small_table_name}")
-
 
             logger.info(f"Process completed successfully for file: {self.file_name}")
             return True
 
         except FileNotFoundError:
-             logger.exception(f"Error: Downloaded file not found at {self.download_path}")
-             return False
+            logger.exception(
+                f"Error: Downloaded file not found at {self.download_path}"
+            )
+            return False
         except Exception as e:
-            logger.exception(f"An error occurred during processing file: {self.file_name}")
+            logger.exception(
+                f"An error occurred during processing file: {self.file_name}"
+            )
             return False
         finally:
             if file_downloaded and os.path.exists(self.download_path):
@@ -125,8 +136,9 @@ class PDFTableExtractor:
                     os.remove(self.download_path)
                     logger.info(f"Cleaned up downloaded file: {self.download_path}")
                 except OSError as e:
-                    logger.error(f"Error removing downloaded file {self.download_path}: {e}")
-
+                    logger.error(
+                        f"Error removing downloaded file {self.download_path}: {e}"
+                    )
 
     def download_file(self):
         """
@@ -141,12 +153,20 @@ class PDFTableExtractor:
             os.makedirs(DOWNLOAD_DIR, exist_ok=True)
             logger.info(f"Created download directory: {DOWNLOAD_DIR}")
 
-        logger.info(f"Attempting to download file '{self.file_name}' from S3 bucket '{bucket}' to '{self.download_path}'")
-        self.aws.download_file_from_s3(
-            bucket, self.file_name, self.download_path
+        logger.info(
+            f"Attempting to download file '{self.file_name}' from S3 bucket '{bucket}' to '{self.download_path}'"
         )
+        self.aws.download_file_from_s3(bucket, self.file_name, self.download_path)
 
-    def get_table_data(self, table_areas: list[str] | None, table_columns: list[str] | None, fix_header: bool = True, flavor: str = "stream", pages: str = "all", password: str | None = None) -> pd.DataFrame | None:
+    def get_table_data(
+        self,
+        table_areas: list[str] | None,
+        table_columns: list[str] | None,
+        fix_header: bool = True,
+        flavor: str = "stream",
+        pages: str = "all",
+        password: str | None = None,
+    ) -> pd.DataFrame | None:
         """
         Extracts table data from the downloaded PDF using Camelot.
 
@@ -168,10 +188,12 @@ class PDFTableExtractor:
             header-fixed table data, or None if no tables were found.
         """
         if not os.path.exists(self.download_path):
-             logger.error(f"PDF file not found for extraction: {self.download_path}")
-             return None
+            logger.error(f"PDF file not found for extraction: {self.download_path}")
+            return None
 
-        logger.info(f"Extracting table data with flavor='{flavor}', pages='{pages}', areas={table_areas}, columns={table_columns}")
+        logger.info(
+            f"Extracting table data with flavor='{flavor}', pages='{pages}', areas={table_areas}, columns={table_columns}"
+        )
 
         try:
             camelot_args = {
@@ -181,14 +203,14 @@ class PDFTableExtractor:
                 "password": password,
             }
             if flavor == "stream":
-                 if table_columns:
-                     camelot_args["columns"] = table_columns
-                 if table_areas:
-                      camelot_args["table_areas"] = table_areas
+                if table_columns:
+                    camelot_args["columns"] = table_columns
+                if table_areas:
+                    camelot_args["table_areas"] = table_areas
 
             elif flavor == "lattice":
-                 if table_areas:
-                      camelot_args["table_areas"] = table_areas
+                if table_areas:
+                    camelot_args["table_areas"] = table_areas
             camelot_args = {
                 "flavor": flavor,
                 "strip_text": self.configs.get("strip_text"),
@@ -198,13 +220,9 @@ class PDFTableExtractor:
             if table_areas is not None:
                 camelot_args["table_areas"] = table_areas
             if table_columns is not None:
-                 camelot_args["columns"] = table_columns
+                camelot_args["columns"] = table_columns
 
-
-            tables = camelot.read_pdf(
-                self.download_path,
-                **camelot_args
-            )
+            tables = camelot.read_pdf(self.download_path, **camelot_args)
             logger.info(f"Camelot found {tables.n} tables.")
 
             if tables.n == 0:
@@ -213,28 +231,33 @@ class PDFTableExtractor:
 
             table_content_list = []
             for page_index, table in enumerate(tables):
-                 df = table.df
-                 if fix_header:
-                     logger.debug(f"Fixing header for table from page {table.page}, index {page_index}...")
-                     df = self.fix_header(df)
-                 table_content_list.append(df)
+                df = table.df
+                if fix_header:
+                    logger.debug(
+                        f"Fixing header for table from page {table.page}, index {page_index}..."
+                    )
+                    df = self.fix_header(df)
+                table_content_list.append(df)
 
             if not table_content_list:
-                 return None
+                return None
 
             result_df = pd.concat(table_content_list, ignore_index=True)
             logger.info(f"Concatenated table data shape: {result_df.shape}")
             return result_df
 
         except ValueError as ve:
-             logger.exception(f"ValueError during table extraction: {ve}")
-             return None
+            logger.exception(f"ValueError during table extraction: {ve}")
+            return None
         except Exception as e:
-             logger.exception(f"An unexpected error occurred during table extraction: {e}")
-             return None
+            logger.exception(
+                f"An unexpected error occurred during table extraction: {e}"
+            )
+            return None
 
-
-    def add_header_info(self, header_df: pd.DataFrame | None, content_df: pd.DataFrame) -> pd.DataFrame:
+    def add_header_info(
+        self, header_df: pd.DataFrame | None, content_df: pd.DataFrame
+    ) -> pd.DataFrame:
         """
         Adds information from the header DataFrame as new columns to the
         content DataFrame. Also adds an 'Insertion Date' column.
@@ -248,7 +271,9 @@ class PDFTableExtractor:
             The content DataFrame with header information columns and 'Insertion Date'.
         """
         if header_df is None or header_df.empty:
-            logger.warning("Header DataFrame is empty or None. Cannot add header info to content.")
+            logger.warning(
+                "Header DataFrame is empty or None. Cannot add header info to content."
+            )
             content_df["insertion_date"] = pd.Timestamp("today").normalize()
             return content_df
 
@@ -258,18 +283,22 @@ class PDFTableExtractor:
             empty_df = pd.DataFrame(columns=header_cols + ["insertion_date"])
             return empty_df
 
-
         header_info_row = header_df.iloc[0]
 
-        header_info_df = pd.DataFrame([header_info_row.values] * len(content_df), columns=header_df.columns)
+        header_info_df = pd.DataFrame(
+            [header_info_row.values] * len(content_df), columns=header_df.columns
+        )
 
         combined_df = pd.concat(
-            [content_df.reset_index(drop=True), header_info_df.reset_index(drop=True)], axis=1
+            [content_df.reset_index(drop=True), header_info_df.reset_index(drop=True)],
+            axis=1,
         )
 
         combined_df["insertion_date"] = pd.Timestamp("today").normalize()
 
-        logger.info(f"Added header info and insertion date. New shape: {combined_df.shape}")
+        logger.info(
+            f"Added header info and insertion date. New shape: {combined_df.shape}"
+        )
         return combined_df
 
     @staticmethod
@@ -286,17 +315,22 @@ class PDFTableExtractor:
             and first column dropped.
         """
         if df.empty:
-             logger.warning("Attempted to fix header on an empty DataFrame.")
-             return df
+            logger.warning("Attempted to fix header on an empty DataFrame.")
+            return df
         if df.shape[0] < 2:
-             logger.warning(f"DataFrame has less than 2 rows ({df.shape[0]}). Cannot fix header.")
-             if isinstance(df.columns, pd.RangeIndex):
-                 logger.warning("DataFrame has default columns and few rows. Header fixing skipped.")
-                 return df
-             else:
-                 logger.warning("DataFrame has custom columns but few rows. Header fixing skipped.")
-                 return df
-
+            logger.warning(
+                f"DataFrame has less than 2 rows ({df.shape[0]}). Cannot fix header."
+            )
+            if isinstance(df.columns, pd.RangeIndex):
+                logger.warning(
+                    "DataFrame has default columns and few rows. Header fixing skipped."
+                )
+                return df
+            else:
+                logger.warning(
+                    "DataFrame has custom columns but few rows. Header fixing skipped."
+                )
+                return df
 
         new_columns = df.iloc[0].astype(str)
 
@@ -305,18 +339,18 @@ class PDFTableExtractor:
         df.columns = new_columns
 
         if df.shape[1] > 0:
-             col_to_drop = df.columns[0]
-             df = df.drop(columns=[col_to_drop])
-             logger.debug(f"Dropped first column '{col_to_drop}' after fixing header.")
+            col_to_drop = df.columns[0]
+            df = df.drop(columns=[col_to_drop])
+            logger.debug(f"Dropped first column '{col_to_drop}' after fixing header.")
         else:
-             logger.warning("DataFrame has no columns after setting header. Cannot drop first column.")
-
+            logger.warning(
+                "DataFrame has no columns after setting header. Cannot drop first column."
+            )
 
         df = df.reset_index(drop=True)
 
         logger.debug("Header fixing complete.")
         return df
-
 
     def sanitize_column_names(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -330,8 +364,8 @@ class PDFTableExtractor:
             A new DataFrame with sanitized column names.
         """
         if df.empty:
-             logger.warning("Attempted to sanitize columns on an empty DataFrame.")
-             return df
+            logger.warning("Attempted to sanitize columns on an empty DataFrame.")
+            return df
 
         original_columns = list(df.columns)
         new_columns = []
@@ -356,14 +390,20 @@ class PDFTableExtractor:
             table_name: The name of the database table.
         """
         if df.empty:
-             logger.warning(f"DataFrame is empty. Skipping send to DB table: {table_name}")
-             return
+            logger.warning(
+                f"DataFrame is empty. Skipping send to DB table: {table_name}"
+            )
+            return
 
-        logger.info(f"Connecting to database and attempting to save data to table: {table_name}")
+        logger.info(
+            f"Connecting to database and attempting to save data to table: {table_name}"
+        )
         try:
             connection = RDSPostgreSQLManager().alchemy()
             df.to_sql(table_name, connection, if_exists="append", index=False)
-            logger.success(f"Successfully saved {len(df)} rows to database table: {table_name}")
+            logger.success(
+                f"Successfully saved {len(df)} rows to database table: {table_name}"
+            )
         except Exception as e:
             logger.exception(f"Failed to save data to database table: {table_name}")
             raise e

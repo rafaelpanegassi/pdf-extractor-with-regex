@@ -3,185 +3,67 @@ import os
 import re
 import urllib.parse
 
-from loguru import logger
-from table_pdf_extractor import PDFTableExtractor
-from extractor_text_pdf import PDFTextExtractor
-
 from configs.rules.notas import rules_dict
 from configs.tools.aws.sqs import AWSSQSManager
-
-
-class AWSSQSManager:
-    def __init__(self):
-        logger.info("AWSSQSManager placeholder initialized.")
-        pass
-
-    def check_message_in_queue(self, queue_name: str) -> bool:
-        logger.info(f"Checking for messages in queue: {queue_name} (placeholder)")
-        return True
-
-    def receive_messages_from_queue(self, queue_name: str, max_number_of_messages: int = 10, visibility_timeout: int = 30) -> list:
-        logger.info(f"Receiving messages from queue: {queue_name} (placeholder)")
-        dummy_message = {
-            "ReceiptHandle": "dummy_receipt_handle_123",
-            "Body": json.dumps({
-                "Records": [
-                    {
-                        "s3": {
-                            "object": {
-                                "key": "path/to/your/file.pdf+with+spaces(and)special%20chars"
-                            }
-                        }
-                    }
-                ]
-            })
-        }
-        return [dummy_message]
-
-    def delete_message_from_queue(self, queue_name: str, receipt_handle: str):
-        logger.info(f"Deleting message from queue: {queue_name} with handle: {receipt_handle} (placeholder)")
-        pass
-
-
-rules_dict = {
-    "jornada": {"some_config": "value"}
-}
-
-class PDFTextExtractor:
-    def __init__(self, file_path):
-        self.file_path = file_path
-        logger.info(f"PDFTextExtractor initialized for file: {file_path} (placeholder)")
-
-    def start(self) -> bool:
-        logger.info(f"Starting text extraction for: {self.file_path} (placeholder)")
-        return True
-
-class PDFTableExtractor:
-    def __init__(self, file_path, configs):
-        self.file_path = file_path
-        self.configs = configs
-        logger.info(f"PDFTableExtractor initialized for file: {file_path} with configs: {configs} (placeholder)")
-
-    def start(self) -> bool:
-        logger.info(f"Starting table extraction for: {self.file_path} (placeholder)")
-        return True
+from table_pdf_extractor import PDFTableExtractor
+from extractor_text_pdf import PDFTextExtractor
+from loguru import logger
 
 
 class HTMLSQSListener:
     """
-    Listens to an SQS queue for messages related to S3 object creation,
-    processes PDF files using text and table extractors, and deletes messages upon successful processing.
-    Uses loguru for logging.
+    Listens to an AWS SQS queue for messages indicating new PDF files to process.
+
+    Each message is expected to contain information about a PDF file in S3.
+    The class downloads the file, extracts both text and table data using
+    separate extractors, and processes the results before deleting the message
+    from the queue.
     """
     def __init__(self):
         """
-        Initializes the HTMLSQSListener, getting the queue name from environment variables
-        and initializing the AWSSQSManager.
+        Initializes the HTMLSQSListener by getting the queue name from
+        environment variables and setting up the SQS manager.
         """
-        logger.info("Initializing HTMLSQSListener.")
         self.queue = os.getenv("QUEUE_NAME")
-        if not self.queue:
-            logger.error("QUEUE_NAME environment variable is not set.")
-        else:
-             logger.info(f"SQS Queue name obtained from environment variable: {self.queue}")
-
-        try:
-            self.sqs = AWSSQSManager()
-            logger.info("AWSSQSManager initialized successfully.")
-        except Exception as e:
-            logger.error(f"Failed to initialize AWSSQSManager: {e}")
-            raise
-
+        self.sqs = AWSSQSManager()
 
     def check_messages(self):
         """
-        Checks the SQS queue for messages, processes them if found, and deletes them.
+        Checks the SQS queue for messages. If messages are found, it processes
+        each message sequentially.
+
+        For each message:
+        1. Parses the S3 object key from the message body.
+        2. Processes the object key (unquoting and cleaning).
+        3. Calls PDFTextExtractor and PDFTableExtractor to process the PDF.
+        4. Logs success or failure based on the results from the extractors.
+        5. Deletes the message from the queue upon completion of processing
+           (either success or failure caught by the inner try/except, but before re-raising).
+        If extraction fails due to an exception, the message is deleted before
+        re-raising the exception.
         """
-        if not self.queue:
-            logger.warning("Cannot check messages. QUEUE_NAME is not set.")
-            return
-
-        logger.info(f"Checking SQS queue '{self.queue}' for messages.")
         has_message = self.sqs.check_message_in_queue(self.queue)
-
         if has_message:
-            logger.info(f"Messages found in queue '{self.queue}'. Receiving messages.")
             messages = self.sqs.receive_messages_from_queue(self.queue)
 
-            if not messages:
-                 logger.info(f"check_message_in_queue indicated messages, but receive_messages_from_queue returned empty list for queue '{self.queue}'.")
-                 return
-
-            logger.info(f"Received {len(messages)} messages.")
-
             for message in messages:
-                receipt_handle = message.get("ReceiptHandle")
-                if not receipt_handle:
-                    logger.warning(f"Received message without ReceiptHandle. Skipping message: {message}")
-                    continue
+                receipt_handle = message["ReceiptHandle"]
+                json_body = json.loads(message["Body"])
+                object_key = json_body["Records"][0]["s3"]["object"]["key"]
+                object_key_unquote = urllib.parse.unquote(object_key)
+                object_key_final = re.sub(r"\+(?=\()", " ", object_key_unquote)
 
                 try:
-                    json_body = json.loads(message.get("Body", "{}"))
-                    records = json_body.get("Records", [])
-                    if not records or len(records) == 0:
-                         logger.warning(f"Message body does not contain expected 'Records' structure. Skipping message with handle: {receipt_handle}")
-                         self.sqs.delete_message_from_queue(self.queue, receipt_handle)
-                         continue
-
-                    s3_object = records[0].get("s3", {}).get("object", {})
-                    object_key = s3_object.get("key")
-
-                    if not object_key:
-                         logger.warning(f"Message body does not contain S3 object key. Skipping message with handle: {receipt_handle}")
-                         self.sqs.delete_message_from_queue(self.queue, receipt_handle)
-                         continue
-
-                    logger.info(f"Processing message for S3 object key: {object_key}")
-
-                    object_key_unquote = urllib.parse.unquote(object_key)
-                    object_key_final = re.sub(r"\+(?=\()", " ", object_key_unquote)
-                    logger.info(f"Cleaned S3 object key: {object_key_final}")
-
-                    resultTxt = False
-                    resultImg = False
-
-                    try:
-                        logger.info(f"Starting PDF text extraction for {object_key_final}")
-                        resultTxt = PDFTextExtractor(object_key_final).start()
-                        logger.info(f"PDF text extraction result: {resultTxt}")
-
-                        logger.info(f"Starting PDF table extraction for {object_key_final}")
-                        table_configs = rules_dict.get("jornada")
-                        if table_configs is None:
-                             logger.error("Configuration 'rules_dict[\"jornada\"]' not found for table extraction.")
-                             pass
-
-                        resultImg = PDFTableExtractor(
-                            object_key_final, configs=table_configs
-                        ).start()
-                        logger.info(f"PDF table extraction result: {resultImg}")
-
-                    except Exception as e:
-                        logger.error(f"Error during PDF extraction for {object_key_final}: {e}")
-                        logger.info(f"Deleting message with handle {receipt_handle} due to extraction error.")
-                        self.sqs.delete_message_from_queue(self.queue, receipt_handle)
-                        raise
-
-                    if resultTxt and resultImg:
-                        logger.info(f"Task processed successfully for {object_key_final}.")
-                    else:
-                        logger.warning(f"Task processed with partial or no success for {object_key_final}. Text success: {resultTxt}, Table success: {resultImg}")
-
-                    logger.info(f"Deleting message with handle {receipt_handle} after processing.")
-                    self.sqs.delete_message_from_queue(self.queue, receipt_handle)
-
-                except json.JSONDecodeError as e:
-                    logger.error(f"Failed to decode JSON message body for message with handle {receipt_handle}: {e}")
-                    self.sqs.delete_message_from_queue(self.queue, receipt_handle)
+                    logger.info(f"Processing file: {object_key_final}")
+                    resultTxt = PDFTextExtractor(object_key_final).start()
+                    resultImg = PDFTableExtractor(
+                        object_key_final, configs=rules_dict["jornada"]
+                    ).start()
                 except Exception as e:
-                    logger.error(f"An unexpected error occurred while processing message with handle {receipt_handle}: {e}")
-                    pass
-
-        else:
-            logger.info(f"No messages found in queue '{self.queue}'.")
-
+                    self.sqs.delete_message_from_queue(self.queue, receipt_handle)
+                    raise (e)
+                if resultTxt and resultImg:
+                    logger.info("Task processed successfully")
+                else:
+                    logger.warning("Task processed with failure or partial success")
+                self.sqs.delete_message_from_queue(self.queue, receipt_handle)

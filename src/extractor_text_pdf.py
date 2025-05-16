@@ -198,16 +198,3 @@ class PDFTextExtractor:
                 connection.dispose()
                 logger.debug("Database connection closed.")
 
-
-if __name__ == "__main__":
-    
-    pdf_path = "corretora_jornada_de_dados (1).pdf"
-    logger.info(f"Running example for PDF: {pdf_path}")
-    pdf_extractor = PDFTextExtractor(pdf_path)
-
-    success = pdf_extractor.start()
-
-    if success:
-        logger.info("PDF processing and loading initiated successfully.")
-    else:
-        logger.error("PDF processing and loading failed.")

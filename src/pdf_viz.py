@@ -21,6 +21,3 @@ plt.show()
 
 logger.info("PDF visualization complete.")
 
-#72, 560
-#492, 390
-

@@ -5,7 +5,7 @@ import urllib.parse
 
 from loguru import logger
 from table_pdf_extractor import PDFTableExtractor
-from text_pdf_extractor import PDFTextExtractor
+from extractor_text_pdf import PDFTextExtractor
 
 from configs.rules.notas import rules_dict
 from configs.tools.aws.sqs import AWSSQSManager

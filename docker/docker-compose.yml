@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  pdf_ingestor:
+    image: pdf-reader:1.0
+    environment:
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=${DB_HOST}
+      - AWS_BUCKET=${AWS_BUCKET}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - QUEUE_NAME=${QUEUE_NAME}
+      - HTML_QUEUE_NAME=${HTML_QUEUE_NAME}
+    command: python3 ./src/__main__.py
+    working_dir: /usr/app/
+    stdin_open: true
+    tty: true

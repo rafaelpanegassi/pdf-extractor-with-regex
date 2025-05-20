@@ -46,13 +46,15 @@ This section guides you through setting up and running the project using a `bash
 - [`pyenv`](https://github.com/pyenv/pyenv) - Python version management
 - [`poetry`](https://python-poetry.org/) - Dependency management
 - [`docker`](https://www.docker.com/) - Containerization
-- [`awss3`](https://aws.amazon.com/s3/) - Object storage
-- [`awssqs`](https://aws.amazon.com/sqs/) - Message queuing
-- [`awsecr`](https://aws.amazon.com/ecr/) - Container registry
-- [`awsiam`](https://aws.amazon.com/iam/) - Identity and access management
-- [`awsvpc`](https://aws.amazon.com/vpc/) - Virtual private cloud
-- [`awsrds`](https://aws.amazon.com/rds/) - Relational database service
 - [`awscli`](https://aws.amazon.com/cli/) - Command line interface for AWS
+
+### AWS Services Used
+- Amazon S3 (Object Storage)
+- Amazon SQS (Message Queuing)
+- Amazon ECR (Container Registry)
+- Amazon IAM (Identity and Access Management)
+- Amazon VPC (Virtual Private Cloud)
+- Amazon RDS (Relational Database Service for PostgreSQL)
 
 ### Setup Instructions
 
@@ -106,7 +108,7 @@ This section guides you through setting up and running the project using a `bash
     ```
 
 6. **Access Database Service**
-    - PostgreSQL: `meu-banco.xxxxxxxxxxxx.us-east-1.rds.amazonaws.com`
+    - Your PostgreSQL endpoint (e.g., `your-db-instance.xxxxxxxxxxxx.us-east-1.rds.amazonaws.com`)
 
 ### Manual Execution
 

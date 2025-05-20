@@ -114,8 +114,6 @@ To run the pipeline manually local, follow these step:
 
 1. **Extract, Transfom and Load Data**
 
-    - Scrapes data from ANTAQ and stores it in the Raw layer.
-
     ```bash
     poetry shell
     python src/__init__.py
